@@ -47,11 +47,13 @@ import Text.PrettyPrint            (hcat)
 import qualified Distribution.Compat.CharParsing as P
 import qualified Text.PrettyPrint                as Disp
 
+import Data.Proxy                          (Proxy (..))
 import Distribution.ModuleName
 import Distribution.Types.ComponentId
 import Distribution.Types.Module
 import Distribution.Types.UnitId
 import Distribution.Utils.Base62
+import Distribution.Utils.StructuredBinary (Structure (..), Structured (..))
 
 import qualified Data.Map as Map
 import           Data.Set (Set)
@@ -99,6 +101,20 @@ data OpenUnitId
 -- TODO: cache holes?
 
 instance Binary OpenUnitId
+
+-- this instance is written manually, as
+--
+-- data OpenUnitId      = IndefFullUnitId ComponentId OpenModuleSubst | ...
+-- type OpenModuleSubst = Map ModuleName OpenModule
+-- data OpenModule      = OpenModule OpenUnitId ModuleName | ...
+--
+-- are mutally recursive.
+--
+instance Structured OpenUnitId where
+    structure _ = Nominal 0 "OpenUnitId"
+        [ structure (Proxy :: Proxy ComponentId)
+        , structure (Proxy :: Proxy DefUnitId)
+        ]
 
 instance NFData OpenUnitId where
     rnf (IndefFullUnitId cid subst) = rnf cid `seq` rnf subst
@@ -166,6 +182,7 @@ data OpenModule
   deriving (Generic, Read, Show, Eq, Ord, Typeable, Data)
 
 instance Binary OpenModule
+instance Structured OpenModule
 
 instance NFData OpenModule where
     rnf (OpenModule uid mod_name) = rnf uid `seq` rnf mod_name

@@ -9,6 +9,7 @@ module Distribution.SPDX.LicenseExpression (
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Data.Proxy                           (Proxy (..))
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.SPDX.LicenseExceptionId
@@ -16,6 +17,7 @@ import Distribution.SPDX.LicenseId
 import Distribution.SPDX.LicenseListVersion
 import Distribution.SPDX.LicenseReference
 import Distribution.Utils.Generic           (isAsciiAlphaNum)
+import Distribution.Utils.StructuredBinary  (Structure (..), Structured (..))
 import Text.PrettyPrint                     ((<+>))
 
 import qualified Distribution.Compat.CharParsing as P
@@ -60,6 +62,14 @@ simpleLicenseExpression i = ELicense (ELicenseId i) Nothing
 
 instance Binary LicenseExpression
 instance Binary SimpleLicenseExpression
+instance Structured SimpleLicenseExpression
+
+-- LicenseExpression is recursive
+instance Structured LicenseExpression where
+    structure _ = Nominal 0 "LicenseExpression"
+        [ structure (Proxy :: Proxy SimpleLicenseExpression)
+        , structure (Proxy :: Proxy (Maybe LicenseExceptionId))
+        ]
 
 instance Pretty LicenseExpression where
     pretty = go 0

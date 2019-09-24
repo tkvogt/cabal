@@ -5,6 +5,7 @@ module Main
 
 import Test.Tasty
 import Test.Tasty.Options
+import Test.Tasty.HUnit (testCase, (@?=))
 
 import Data.Proxy
 import Data.Typeable
@@ -12,6 +13,11 @@ import Data.Typeable
 import Distribution.Simple.Utils
 import Distribution.Verbosity
 import Distribution.Compat.Time
+
+import Distribution.Types.LocalBuildInfo (LocalBuildInfo)
+import Distribution.Utils.StructuredBinary (structureHash)
+import Distribution.SPDX.License (License)
+import GHC.Fingerprint (Fingerprint (..))
 
 import qualified UnitTests.Distribution.Compat.CreatePipe
 import qualified UnitTests.Distribution.Compat.Time
@@ -65,6 +71,17 @@ tests mtimeChangeCalibrated =
         UnitTests.Distribution.PkgconfigVersion.pkgconfigVersionTests
     , testGroup "Distribution.SPDX"
         UnitTests.Distribution.SPDX.spdxTests
+    , testGroup "Distribution.Utils.StructuredBinary"
+        -- This tests will (should?) fail when you change about any type definition.
+        -- The type's Binary/Structured instances change, and the change
+        -- should propagate to LocalBuildInfo structureHash too.
+        --
+        -- This test also verifies that structureHash doesn't loop.
+        [ testCase "LocalBuildInfo" $
+            structureHash (Proxy :: Proxy LocalBuildInfo) @?= Fingerprint 0x22e9506eef8255a4 0xf505535bc001e0e4
+        , testCase "SPDX.License" $
+            structureHash (Proxy :: Proxy License)        @?= Fingerprint 0x9bcf7b3ea1c8cccf 0x4a95331b5d031bb3
+        ]
     ]
 
 extraOptions :: [OptionDescription]
