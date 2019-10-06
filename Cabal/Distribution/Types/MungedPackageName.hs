@@ -93,7 +93,7 @@ instance Parsec MungedPackageName where
     parsec = decodeCompatPackageName' <$> parsecUnqualComponentName
 
 instance Described MungedPackageName where
-    describe _ = RENamed "munged-package-name"
+    describe _ = describeUnqualComponentName
 
 -------------------------------------------------------------------------------
 -- ZDashCode conversions

@@ -14,6 +14,8 @@ import Distribution.Compat.Prelude
 import Prelude ()
 
 import Distribution.CabalSpecVersion
+
+import Distribution.FieldGrammar.Described
 import Distribution.Parsec
 import Distribution.Pretty
 import Distribution.Types.PkgconfigVersion
@@ -69,6 +71,9 @@ instance Parsec PkgconfigVersionRange where
         if csv >= CabalSpecV3_0
         then pkgconfigParser
         else versionRangeToPkgconfigVersionRange <$> versionRangeParser P.integral
+
+instance Described PkgconfigVersionRange where
+    describe _ = REString "-any" -- TODO
 
 -- "modern" parser of @pkg-config@ package versions.
 pkgconfigParser :: CabalParsing m => m PkgconfigVersionRange

@@ -52,4 +52,6 @@ instance Parsec ModuleReexport where
         return (ModuleReexport mpkgname origname newname)
 
 instance Described ModuleReexport where
-    describe _ = RENamed "module-reexport"
+    describe _ = RENamed "module-reexport" $ reAppend
+        [ REOpt (RENamed "original-package-name" (describe ([] :: [PackageName])) <> reChar ':')
+        ]

@@ -10,13 +10,14 @@ module Distribution.Types.IncludeRenaming (
 import Distribution.Compat.Prelude
 import Prelude ()
 
+import Distribution.FieldGrammar.Described
+import Distribution.Parsec
+import Distribution.Pretty
 import Distribution.Types.ModuleRenaming
+import Text.PrettyPrint                    (text, (<+>))
 
 import qualified Distribution.Compat.CharParsing as P
-import           Distribution.Parsec
-import           Distribution.Pretty
-import           Text.PrettyPrint           (text, (<+>))
-import qualified Text.PrettyPrint           as Disp
+import qualified Text.PrettyPrint                as Disp
 
 -- ---------------------------------------------------------------------------
 -- Module renaming
@@ -65,3 +66,8 @@ instance Parsec IncludeRenaming where
         -- is for the "with" field to be False, so we correctly
         -- thin provisions.
         return (IncludeRenaming prov_rn req_rn)
+
+instance Described IncludeRenaming where
+    describe _ = RENamed "include-renaming" $
+        describe ([] :: [ModuleRenaming])
+        -- TODO: add requires

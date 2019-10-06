@@ -1,15 +1,25 @@
+{-# LANGUAGE DeriveFunctor       #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Distribution.FieldGrammar.Described (
     Described (..),
     describeDoc,
+    describeHaskellString,
+    describeUnqualComponentName,
     -- * Regular expressions
-    Regex (..),
+    Regex,
     reChar,
+    reEps,
+    reUnion,
+    reAppend,
     reDigits,
     reDot,
+    reUpperChar,
     reMunchCS,
     reMunch1CS,
+    csChars,
+    -- ** Details
+    RE (..),
     CharSet (..),
     regexDoc,
     regexMatch,
@@ -18,6 +28,7 @@ module Distribution.FieldGrammar.Described (
 import Data.Char                   (isAlphaNum, isDigit)
 import Data.String                 (IsString (..))
 import Distribution.Compat.Prelude
+import Data.Void (Void, absurd)
 import Prelude ()
 
 import Distribution.Parsec (Parsec)
@@ -45,21 +56,96 @@ instance Described a => Described (Identity a) where
     describe _ = describe ([] :: [a])
 
 -------------------------------------------------------------------------------
+-- Common patterns
+-------------------------------------------------------------------------------
+
+describeHaskellString :: Regex
+describeHaskellString = RENamed "haskell-string" $
+    reChar '"' <>
+    -- TODO
+    reChar '"'
+
+describeUnqualComponentName :: Regex
+describeUnqualComponentName =
+    --  TODO
+    REString "unqual-component-name"
+
+-------------------------------------------------------------------------------
 -- Regex
 -------------------------------------------------------------------------------
 
+type Regex = RE String String Void
+
 -- | Regular expressions tuned for 'Described' use-case.
-data Regex
-    = REAppend  [Regex] -- ^ append @ab@
-    | REUnion   [Regex] -- ^ union @a|b@
-    | REMunch   Regex   -- ^ star @a*@
-    | REMunch1  Regex   -- ^ plus @a+@
-    | REOpt     Regex   -- ^ optional @r?@
-    | REString  String  -- ^ literal string @abcd@
-    | RECharSet CharSet -- ^ charset @[:alnum:]@
-    | RENamed   String
-    | RENamed1  String Regex
-  deriving (Eq, Ord, Show)
+--
+-- Type arguments are
+--
+-- * @f@ names of functions (e.g. list)
+-- * @x@ names of variables (e.g. module-name)
+-- * @a@ variables for functions
+--
+data RE f x a
+    = REAppend  [RE f x a]   -- ^ append @ab@
+    | REUnion   [RE f x a]   -- ^ union @a|b@
+    | REMunch   (RE f x a)   -- ^ star @a*@
+    | REMunch1  (RE f x a)   -- ^ plus @a+@
+    | REOpt     (RE f x a)   -- ^ optional @r?@
+    | REString  String       -- ^ literal string @abcd@
+    | RECharSet CharSet      -- ^ charset @[:alnum:]@
+    | REPunct   Char         -- ^ punctuation character @,@ (can be surrounded by spaces)
+    | RESpaces               -- ^ 1..many spaces
+    | RENamed   x (RE f x a)
+    | REVar     a
+    | REApp     f (RE f x (Maybe a)) (RE f x a)
+  deriving (Eq, Ord, Show, Functor)
+
+instance Applicative (RE f x) where
+    pure = REVar
+    (<*>) = ap
+
+instance Monad (RE f x) where
+    return = pure
+
+    REVar x     >>= k = k x
+    RENamed n r >>= k = RENamed n (r >>= k)
+    REApp n f x >>= k = REApp n (f >>= traverse k) (x >>= k)
+
+    REAppend rs >>= k = REAppend (map (>>= k) rs)
+    REUnion rs  >>= k = REAppend (map (>>= k) rs)
+    REMunch r   >>= k = REMunch (r >>= k)
+    REMunch1 r  >>= k = REMunch1 (r >>= k)
+    REOpt r     >>= k = REOpt (r >>= k)
+    REString s  >>= _ = REString s
+    RECharSet s >>= _ = RECharSet s
+    REPunct c   >>= _ = REPunct c
+    RESpaces    >>= _ = RESpaces
+
+instance IsString (RE f x a) where
+    fromString = REString
+
+instance Semigroup (RE f x a) where
+    x <> y = reAppend (unAppend x ++ unAppend y) where
+        unAppend (REAppend rs) = rs
+        unAppend r             = [r]
+
+instance Monoid (RE f x a) where
+    mempty  = REAppend []
+    mappend = (<>)
+
+-------------------------------------------------------------------------------
+-- Smart constructors
+-------------------------------------------------------------------------------
+
+reEps :: RE f x a
+reEps = REAppend []
+
+reUnion :: [Regex] -> Regex
+reUnion [r] = r
+reUnion rs  = REUnion rs
+
+reAppend :: [RE f x a] -> RE f x a
+reAppend [r] = r
+reAppend rs  = REAppend rs
 
 reChar :: Char -> Regex
 reChar = RECharSet . CSChar
@@ -68,7 +154,7 @@ reDigits :: Regex
 reDigits = REMunch1 (RECharSet CSDigit)
 
 reDot :: Regex
-reDot = RECharSet (CSChar '.')
+reDot = REPunct '.'
 
 reMunch1CS :: CharSet -> Regex
 reMunch1CS = REMunch1 . RECharSet
@@ -76,17 +162,17 @@ reMunch1CS = REMunch1 . RECharSet
 reMunchCS :: CharSet -> Regex
 reMunchCS = REMunch . RECharSet
 
-instance IsString Regex where
-    fromString = REString
+reUpperChar :: Regex
+reUpperChar = RECharSet CSUpper
 
-instance Semigroup Regex where
-    x <> y = REAppend (unAppend x ++ unAppend y) where
-        unAppend (REAppend rs) = rs
-        unAppend r             = [r]
+csChars :: String -> CharSet
+csChars = CSUnion . Set.fromList . map CSChar
 
-instance Monoid Regex where
-    mempty = REAppend []
-    mappend = (<>)
+
+
+-------------------------------------------------------------------------------
+-- Character sets
+-------------------------------------------------------------------------------
 
 -- | Character sets.
 --
@@ -95,6 +181,7 @@ instance Monoid Regex where
 --
 data CharSet
     = CSDigit               -- ^ decimal digits  @[:digit:]@
+    | CSUpper               -- ^ upper characters @[:upper:]@
     | CSAlphaNum            -- ^ alpha-numeric   @[:alnum:]@
     | CSNotSpaceOrComma     -- ^ not space, nor comma: @[^ ,]@
     | CSNotSpace            -- ^ not space: @[^ ]@
@@ -129,6 +216,10 @@ instance Semigroup CharSet where
             [s'] -> s'
             _    -> CSUnion s
 
+-------------------------------------------------------------------------------
+-- Pretty printing
+-------------------------------------------------------------------------------
+
 -- |
 --
 -- >>> regexDoc $ REString "True"
@@ -159,8 +250,11 @@ regexDoc = go 0 where
     go _ (REOpt r)      = go 3 r <<>> PP.char '?'
     go d (REString s)   = parensIf (d > 2) $ PP.text s
     go _ (RECharSet cs) = charsetDoc cs
-    go _ (RENamed n)    = PP.braces (PP.text n)
-    go _ (RENamed1 n s) = PP.braces (PP.text n <<>> PP.char '=' <<>> go 0 s)
+    go _ (REPunct c)    = PP.char c
+    go _ RESpaces       = PP.space
+    go _ (RENamed n _)  = PP.braces (PP.text n)
+    go _ (REVar n)      = absurd n
+    go _ (REApp n _ s)  = PP.braces (PP.text n <<>> PP.text " $ " <<>> go 0 s)
 
     parensIf :: Bool -> PP.Doc -> PP.Doc
     parensIf True  = PP.parens
@@ -180,11 +274,16 @@ regexDoc = go 0 where
 --
 charsetDoc :: CharSet -> PP.Doc
 charsetDoc CSDigit           = PP.text "[:digit:]"
+charsetDoc CSUpper           = PP.text "[:upper:]"
 charsetDoc CSAlphaNum        = PP.text "[:alnum:]"
 charsetDoc CSNotSpaceOrComma = PP.text "[^ ,]"
 charsetDoc CSNotSpace        = PP.text "[^ ]"
 charsetDoc (CSChar c)        = PP.char c
 charsetDoc (CSUnion cs)      = PP.brackets $ PP.hcat (map charsetDoc $ Set.toList cs)
+
+-------------------------------------------------------------------------------
+-- Matching
+-------------------------------------------------------------------------------
 
 regexMatch :: Regex -> String -> Bool
 regexMatch _ _ = False

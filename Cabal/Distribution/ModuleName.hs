@@ -59,7 +59,8 @@ instance Parsec ModuleName where
             return (c:cs)
 
 instance Described ModuleName where
-    describe _ = RENamed "module-name"
+    describe _ = RENamed "module-name" $ part <> REMunch1 (reChar '.' <> part) where
+        part = reUpperChar <> reMunch1CS (CSAlphaNum <> csChars "_'")
 
 validModuleChar :: Char -> Bool
 validModuleChar c = isAlphaNum c || c == '_' || c == '\''

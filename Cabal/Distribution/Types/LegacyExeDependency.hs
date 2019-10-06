@@ -47,4 +47,4 @@ instance Parsec LegacyExeDependency where
             if all isDigit cs then fail "invalid component" else return cs
 
 instance Described LegacyExeDependency where
-    describe _ = RENamed "legacy-exe-dependency"
+    describe _ = RENamed "legacy-exe-dependency" $ REString "happy" -- TODO

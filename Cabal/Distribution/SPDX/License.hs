@@ -7,6 +7,7 @@ module Distribution.SPDX.License (
 import Prelude ()
 import Distribution.Compat.Prelude
 
+import Distribution.FieldGrammar.Described
 import Distribution.Pretty
 import Distribution.Parsec
 import Distribution.SPDX.LicenseExpression
@@ -62,3 +63,6 @@ instance Pretty License where
 --
 instance Parsec License where
     parsec = NONE <$ P.try (P.string "NONE") <|> License <$> parsec
+
+instance Described License where
+    describe _ = REString "NONE"

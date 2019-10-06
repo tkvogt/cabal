@@ -98,7 +98,10 @@ instance Parsec Dependency where
                                            $ parsecCommaList $ parseLib pn
 
 instance Described Dependency where
-    describe _ = RENamed "dependency"
+    describe _ = RENamed "dependency" $
+        describe ([] :: [PackageName])
+        -- TODO: add version range
+        -- TODO: add multi-libs
 
 -- mempty should never be in a Dependency-as-dependency.
 -- This is only here until the Dependency-as-constraint problem is solved #5570.

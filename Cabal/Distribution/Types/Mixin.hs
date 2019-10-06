@@ -37,4 +37,7 @@ instance Parsec Mixin where
         return (Mixin mod_name incl)
 
 instance Described Mixin where
-    describe _ = RENamed "mixin"
+    describe _ = RENamed "mixin" $
+        describe ([] :: [PackageName]) <>
+        describe ([] :: [IncludeRenaming])
+        

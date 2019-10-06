@@ -9,6 +9,7 @@ import Prelude ()
 import Distribution.Compat.Prelude
 import Distribution.Utils.ShortText
 
+import Distribution.FieldGrammar.Described
 import Distribution.Pretty
 import Distribution.Parsec
 
@@ -52,10 +53,13 @@ instance Binary PkgconfigName
 -- "gtk+-2.0" is a valid pkg-config package _name_.  It then has a package
 -- version number like 2.10.13
 instance Pretty PkgconfigName where
-  pretty = Disp.text . unPkgconfigName
+    pretty = Disp.text . unPkgconfigName
 
 instance Parsec PkgconfigName where
-  parsec = mkPkgconfigName <$> P.munch1 (\c -> isAlphaNum c || c `elem` "+-._")
+    parsec = mkPkgconfigName <$> P.munch1 (\c -> isAlphaNum c || c `elem` "+-._")
+
+instance Described PkgconfigName where
+    describe _ = reMunch1CS $ CSAlphaNum <> csChars "+-._"
 
 instance NFData PkgconfigName where
     rnf (PkgconfigName pkg) = rnf pkg

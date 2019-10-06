@@ -864,6 +864,7 @@ instance Pretty KnownExtension where
 
 instance Described Extension where
     describe _ = RENamed "language-extension"
+       "OverloadedStrings" -- TODO
 
 classifyExtension :: String -> Extension
 classifyExtension string

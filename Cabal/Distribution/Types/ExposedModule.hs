@@ -41,7 +41,8 @@ instance Parsec ExposedModule where
         return (ExposedModule m reexport)
 
 instance Described ExposedModule where
-    describe _ = RENamed "exposed-module" -- TODO
+    describe _ = describe ([] :: [ModuleName])
+        -- TODO: add re-export
 
 instance Binary ExposedModule
 

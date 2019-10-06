@@ -10,17 +10,19 @@ module Distribution.Types.ModuleRenaming (
 ) where
 
 import Distribution.CabalSpecVersion
-import Distribution.Compat.Prelude hiding (empty)
+import Distribution.Compat.Prelude   hiding (empty)
 import Prelude ()
 
+import Distribution.FieldGrammar.Described
 import Distribution.ModuleName
 import Distribution.Parsec
 import Distribution.Pretty
+import Text.PrettyPrint
+       (comma, hsep, parens, punctuate, text, (<+>))
 
-import qualified Data.Map                   as Map
-import qualified Data.Set                   as Set
+import qualified Data.Map                        as Map
+import qualified Data.Set                        as Set
 import qualified Distribution.Compat.CharParsing as P
-import           Text.PrettyPrint           (hsep, parens, punctuate, text, (<+>), comma)
 
 -- | Renaming applied to the modules provided by a package.
 -- The boolean indicates whether or not to also include all of the
@@ -100,6 +102,13 @@ instance Parsec ModuleRenaming where
 
         warnSpaces = P.optional $
             P.space *> fail "space after parenthesis, use cabal-version: 3.0 or higher"
+
+instance Described ModuleRenaming where
+    describe _ = RENamed "module-renaming" $ reUnion
+        [ reEps -- DefaultRenaming
+        -- TODO: add HidingRenaming
+        -- TODO: add ModuleRenaming
+        ]
 
 moduleRenamingParsec
     :: CabalParsing m

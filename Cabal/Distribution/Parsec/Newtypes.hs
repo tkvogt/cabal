@@ -68,36 +68,41 @@ class    Sep sep  where
 
     parseSep :: CabalParsing m => Proxy sep -> m a -> m [a]
 
-    describeSep :: Proxy sep -> String
+    describeSep :: Proxy sep -> Regex -> Regex
 
 instance Sep CommaVCat where
     prettySep  _ = vcat . punctuate comma
     parseSep   _ p = do
         v <- askCabalSpecVersion
         if v >= CabalSpecV2_2 then parsecLeadingCommaList p else parsecCommaList p
-    describeSep _ = "comma-separated-list"
+    describeSep _ = REApp "comma-separated-list"
+        $ REVar Nothing -- TODO
 instance Sep CommaFSep where
     prettySep _ = fsep . punctuate comma
     parseSep   _ p = do
         v <- askCabalSpecVersion
         if v >= CabalSpecV2_2 then parsecLeadingCommaList p else parsecCommaList p
-    describeSep _ = "comma-separated-list"
+    describeSep _ = REApp "comma-separated-list"
+        $ REVar Nothing -- TODO
 instance Sep VCat where
     prettySep _  = vcat
     parseSep   _ p = do
         v <- askCabalSpecVersion
         if v >= CabalSpecV3_0 then parsecLeadingOptCommaList p else parsecOptCommaList p
-    describeSep _ = "optional-comma-separated-list"
+    describeSep _ = REApp "optional-comma-separated-list"
+        $ REVar Nothing -- TODO
 instance Sep FSep where
     prettySep _  = fsep
     parseSep   _ p = do
         v <- askCabalSpecVersion
         if v >= CabalSpecV3_0 then parsecLeadingOptCommaList p else parsecOptCommaList p
-    describeSep _ = "optional-comma-separated-list"
+    describeSep _ = REApp "optional-comma-separated-list"
+        $ REVar Nothing -- TODO
 instance Sep NoCommaFSep where
     prettySep _   = fsep
     parseSep  _ p = many (p <* P.spaces)
-    describeSep _ = "space-separated-list"
+    describeSep _ = REApp "space-separated-list"
+        $ REVar Nothing -- TODO
 
 -- | List separated with optional commas. Displayed with @sep@, arguments of
 -- type @a@ are parsed and pretty-printed as @b@.
@@ -128,7 +133,7 @@ instance (Newtype a b, Sep sep, Pretty b) => Pretty (List sep b a) where
     pretty = prettySep (Proxy :: Proxy sep) . map (pretty . (pack :: a -> b)) . unpack
 
 instance (Newtype a b, Sep sep, Described b) => Described (List sep b a) where
-    describe _ = RENamed1 (describeSep (Proxy :: Proxy sep)) (describe (Proxy :: Proxy b))
+    describe _ = describeSep (Proxy :: Proxy sep) (describe (Proxy :: Proxy b))
 
 -- | Haskell string or @[^ ,]+@
 newtype Token = Token { getToken :: String }
@@ -142,7 +147,7 @@ instance Pretty Token where
     pretty = showToken . unpack
 
 instance Described Token where
-    describe _ = REUnion [RENamed "haskell-string", reMunch1CS CSNotSpaceOrComma]
+    describe _ = REUnion [describeHaskellString, reMunch1CS CSNotSpaceOrComma]
 
 -- | Haskell string or @[^ ]+@
 newtype Token' = Token' { getToken' :: String }
@@ -156,7 +161,7 @@ instance Pretty Token' where
     pretty = showToken . unpack
 
 instance Described Token' where
-    describe _ = REUnion [RENamed "haskell-string", reMunch1CS CSNotSpace]
+    describe _ = REUnion [describeHaskellString, reMunch1CS CSNotSpace]
 
 -- | Either @"quoted"@ or @un-quoted@.
 newtype MQuoted a = MQuoted { getMQuoted :: a }
@@ -223,7 +228,7 @@ instance Pretty SpecLicense where
     pretty = either pretty pretty . unpack
 
 instance Described SpecLicense where
-    describe _ = RENamed "spdx-license-expression"
+    describe _ = describe (Proxy :: Proxy SPDX.License)
 
 -- | Version range or just version
 newtype TestedWith = TestedWith { getTestedWith :: (CompilerFlavor, VersionRange) }
@@ -238,7 +243,9 @@ instance Pretty TestedWith where
         (compiler, vr) -> pretty compiler <+> pretty vr
 
 instance Described TestedWith where
-    describe _ = RENamed "tested-with"
+    describe _ = RENamed "tested-with" $
+        -- TODO
+        "GHC"
 
 -- | Filepath are parsed as 'Token'.
 newtype FilePathNT = FilePathNT { getFilePathNT :: String }

@@ -43,7 +43,12 @@ instance Parsec ExeDependency where
         return (ExeDependency name exe ver)
 
 instance Described ExeDependency where
-    describe _ = RENamed "exe-dependency"
+    describe _ = RENamed "exe-dependency" $ reAppend
+        [ describe ([] :: [PackageName])
+        , reChar ':'
+        , RENamed "executable-name" describeUnqualComponentName
+        , describe ([] :: [VersionRange])
+        ]
 
 qualifiedExeName :: ExeDependency -> ComponentName
 qualifiedExeName (ExeDependency _ ucn _) = CExeName ucn

@@ -58,7 +58,7 @@ instance Parsec UnqualComponentName where
   parsec = mkUnqualComponentName <$> parsecUnqualComponentName
 
 instance Described UnqualComponentName where
-  describe _ = RENamed "unqualified-component-name"
+  describe _ = describeUnqualComponentName
 
 instance NFData UnqualComponentName where
   rnf (UnqualComponentName pkg) = rnf pkg

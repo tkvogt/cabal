@@ -40,4 +40,6 @@ instance Parsec PkgconfigDependency where
         pure $ PkgconfigDependency name verRange
 
 instance Described PkgconfigDependency where
-    describe _ = RENamed "pkgconfig-dependency"
+    describe _ = RENamed "pkgconfig-dependency" $
+        describe ([] :: [PkgconfigName]) <>
+        REOpt (RESpaces <> describe ([] :: [PkgconfigVersionRange]))

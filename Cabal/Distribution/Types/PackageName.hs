@@ -58,4 +58,4 @@ instance NFData PackageName where
     rnf (PackageName pkg) = rnf pkg
 
 instance Described PackageName where
-  describe _ = RENamed "unqualified-component-name"
+  describe _ = RENamed "package-name" describeUnqualComponentName
