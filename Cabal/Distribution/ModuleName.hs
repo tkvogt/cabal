@@ -26,7 +26,7 @@ module Distribution.ModuleName (
 import Prelude ()
 import Distribution.Compat.Prelude
 
-import Distribution.Utils.ShortText
+import Distribution.Utils.ShortText (ShortText, fromShortText, toShortText)
 import System.FilePath ( pathSeparator )
 
 import Distribution.Pretty
