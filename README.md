@@ -33,7 +33,7 @@ To install the latest version from the Git repository, clone the
 Git repository and then run:
 
 ~~~~
-(cd Cabal; cabal install)
+(cd Cabal; cabal install --lib)
 (cd cabal-install; cabal install)
 ~~~~
 
